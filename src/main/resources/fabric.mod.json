@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "statsdump",
+  "version": "${version}",
+  "name": "Stats Dump",
+  "description": "Exporte les statistiques vanilla en JSON dans Téléchargements à la connexion.",
+  "environment": "client",
+  "mixins": ["statsdump.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": ">=26.3",
+    "java": ">=25"
+  }
+}
