@@ -7,16 +7,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundAwardStatsPacket;
 import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.stats.Stat;
 import net.minecraft.stats.StatType;
 import net.minecraft.stats.StatsCounter;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -30,15 +27,13 @@ import java.util.Date;
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPacketListenerMixin {
 
-    @Shadow @Final private Minecraft minecraft;
-    @Shadow @Final private Connection connection;
 
     private static final Gson STATSDUMP_GSON = new GsonBuilder().setPrettyPrinting().create();
 
     // À la connexion : on demande les stats au serveur (comme l'onglet Statistiques).
     @Inject(method = "handleLogin", at = @At("TAIL"))
     private void statsdump$request(ClientboundLoginPacket packet, CallbackInfo ci) {
-        this.connection.send(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.REQUEST_STATS));
+        ((ClientPacketListener) (Object) this).send(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.REQUEST_STATS));
     }
 
     // Quand le serveur répond : on exporte en JSON.
@@ -46,8 +41,9 @@ public abstract class ClientPacketListenerMixin {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void statsdump$dump(ClientboundAwardStatsPacket packet, CallbackInfo ci) {
         try {
-            if (this.minecraft.player == null) return;
-            StatsCounter counter = this.minecraft.player.getStats();
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null) return;
+            StatsCounter counter = mc.player.getStats();
             JsonObject root = new JsonObject();
 
             for (StatType type : BuiltInRegistries.STAT_TYPE) {
@@ -65,8 +61,8 @@ public abstract class ClientPacketListenerMixin {
                 }
             }
 
-            String server = this.minecraft.getCurrentServer() != null
-                    ? this.minecraft.getCurrentServer().ip : "solo";
+            String server = mc.getCurrentServer() != null
+                    ? mc.getCurrentServer().ip : "solo";
             server = server.replaceAll("[^a-zA-Z0-9._-]", "_");
             String name = "stats-" + server + "-"
                     + new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date()) + ".json";
@@ -76,7 +72,7 @@ public abstract class ClientPacketListenerMixin {
                     Path.of("/storage/emulated/0/Download"),
                     Path.of("/sdcard/Download"),
                     Path.of(System.getProperty("user.home", "."), "Downloads"),
-                    this.minecraft.gameDirectory.toPath()
+                    mc.gameDirectory.toPath()
             };
             for (Path dir : candidates) {
                 try {
